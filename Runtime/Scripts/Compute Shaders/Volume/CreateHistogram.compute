@@ -1,0 +1,39 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+float4 Dimensions;
+Texture3D<float> LabelMap;
+Texture3D<float> Intensities;
+RWTexture2D<int> RawHistogram;
+RWStructuredBuffer<int> VoxelsPerSegment;
+
+static int3 dimensions;
+
+[numthreads(8,8,8)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    int3 ida = int3(id.x, id.y, id.z);
+    dimensions = int3(Dimensions.x, Dimensions.y, Dimensions.z);
+
+    if (ida.x >= dimensions.x || ida.y >= dimensions.y || ida.z >= dimensions.z)
+    {
+        return;
+    }
+    
+    uint histWidth, histHeight;
+    RawHistogram.GetDimensions(histWidth, histHeight);
+    
+    int label = (int)LabelMap[ida];
+    
+    float intensity = Intensities[ida];
+    int bar = intensity * (histHeight - 2);
+    
+    int newValue;
+    InterlockedAdd(RawHistogram[int2(label, bar)], 1, newValue);
+    InterlockedMax(RawHistogram[int2(label, histHeight - 1)], newValue + 1);
+    InterlockedAdd(VoxelsPerSegment[label], 1);
+    
+    //Histogram[int2(bar, label)] = 1;
+
+    //Histogram[id.xy] = float4(id.x & id.y, (id.x & 15) / 15.0, (id.y & 15) / 15.0, 0.0);
+}

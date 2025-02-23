@@ -1,0 +1,69 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+float4 Dimensions;
+Texture3D<float> LabelMap;
+Texture2D<float> SegmentClipMask;
+
+//static const float4x4 M = float4x4(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+float4x4 CarvingMatrixMVP[32]; // = { M, M, M, M, M, M, M, M };
+
+Texture2DArray<float2> CarvingArray;
+SamplerState samplerCarvingArray;
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture3D<half> CarvingMap;
+
+RWStructuredBuffer<int> TouchingSegments;
+int TouchingSegmentsWidth;
+
+static int3 dimensions;
+
+bool isClipped(float3 voxelPositionNc, int carvingSlice)
+{
+    float4 currentPosP = mul(CarvingMatrixMVP[carvingSlice], float4(voxelPositionNc - float3(0.5, 0.5, 0.5), 1.f));
+    currentPosP /= currentPosP.w;
+    float2 pixelCoordinateOfVoxel = (currentPosP.xy + float2(1, 1)) * 0.5;
+    pixelCoordinateOfVoxel.y = 1 - pixelCoordinateOfVoxel.y;
+    float2 carvingValues = CarvingArray.SampleLevel(samplerCarvingArray, float3(pixelCoordinateOfVoxel.xy, carvingSlice), 0);
+    return currentPosP.z < carvingValues.r && currentPosP.z > carvingValues.g;
+}
+
+[numthreads(4, 4, 4)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    int3 ida = int3(id.x, id.y, id.z);
+    dimensions = int3(Dimensions.x, Dimensions.y, Dimensions.z);
+
+    if (ida.x >= dimensions.x || ida.y >= dimensions.y || ida.z >= dimensions.z)
+    {
+        return;
+    }
+    
+    int label = (int) LabelMap[ida];
+    
+    uint3 dimensionsCarvingArray;
+    CarvingArray.GetDimensions(dimensionsCarvingArray.x, dimensionsCarvingArray.y, dimensionsCarvingArray.z);
+    
+    float3 voxelPositionNc = float3(ida + float3(0.5, 0.5, 0.5)) / float3(dimensions);
+    
+    bool clipped = false;
+    for (int i = 0; i < (int) dimensionsCarvingArray.z; i++)
+    {
+        bool segmentIsCarved = SegmentClipMask[int2(label, i)] > 0.5;
+        bool clippedForCurrentMesh = isClipped(voxelPositionNc, i);
+        bool voxelIsCarvedForThisMesh = segmentIsCarved && clippedForCurrentMesh;
+        clipped = clipped || voxelIsCarvedForThisMesh;        
+        
+        //InterlockedAdd(TouchingSegments[index], value); // TODO: very slow
+        if (clippedForCurrentMesh)
+        {
+            int index = label + i * TouchingSegmentsWidth;
+            //int value = segmentIsCarved ? 1 : 0;
+            TouchingSegments[index] = 1;
+        }
+    }
+
+    CarvingMap[ida] = clipped ? 0 : 1;
+}

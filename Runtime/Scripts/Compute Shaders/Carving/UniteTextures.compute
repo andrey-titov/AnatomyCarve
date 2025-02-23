@@ -1,0 +1,50 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#pragma multi_compile __ AGGREGATE_DILATION
+
+int Slice;
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+Texture2D<float> DepthFront;
+Texture2D<float> DepthBack;
+RWTexture2DArray<float2> CarvingArray;
+
+#if AGGREGATE_DILATION 
+Texture2D<float> DilationFront;
+Texture2D<float> DilationBack;
+RWTexture2DArray<float4> CarvingDilationArray;
+#endif
+
+static int2 ida;
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    ida = int2(id.x, id.y);
+    uint textureWidth;
+    uint textureHeight;
+    DepthFront.GetDimensions(textureWidth, textureHeight);
+
+    if (ida.x >= (int) textureWidth || ida.y >= (int) textureHeight)
+    {
+        return;
+    }
+    
+    float r = DepthFront[id.xy];
+    float g = DepthBack[id.xy];
+    
+    if (g == 0.0)
+    {
+        g = 1.0;
+    }
+
+    CarvingArray[int3(ida.x, ida.y, Slice)] = float2(r, g);
+    
+#if AGGREGATE_DILATION 
+    float b = DilationFront[id.xy];
+    float a = DilationBack[id.xy];
+    CarvingDilationArray[int3(ida.x, ida.y, Slice)] = float4(r, g, b, a);
+#endif
+}

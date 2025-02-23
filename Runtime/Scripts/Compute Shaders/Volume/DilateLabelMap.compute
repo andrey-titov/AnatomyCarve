@@ -1,0 +1,90 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#define DILATION 1
+#define NUM_ELEMENTS 27
+
+float4 Dimensions;
+Texture3D<float> LabelMap;
+RWTexture3D<float4> LabelMapDilated;
+
+static int3 dimensions;
+
+void GetFourMostFrequent(int array[NUM_ELEMENTS], int size, out int result[4])
+{
+    for (int k = 0; k < 4; k++)
+    {
+        int maxFrequency = -1;
+        int mostFrequentElement = -1;
+
+        // Iterate through each element to find the current most frequent one
+        for (int i = 0; i < size; i++)
+        {
+            int count = 0;
+            bool alreadySelected = false;
+
+            // Check if the element was already selected
+            [unroll]
+            for (int m = 0; m < k; m++)
+            {
+                if (result[m] == array[i])
+                {
+                    alreadySelected = true;
+                    break;
+                }
+            }
+            if (alreadySelected)
+                continue;
+
+            // Count the frequency of the current element
+            for (int j = 0; j < size; j++)
+            {
+                if (array[j] == array[i])
+                {
+                    count++;
+                }
+            }
+
+            // If the current element's frequency is greater than the maximum, update
+            if (count > maxFrequency)
+            {
+                maxFrequency = count;
+                mostFrequentElement = array[i];
+            }
+        }
+
+        // Add to the result
+        result[k] = mostFrequentElement;
+    }
+}
+
+[numthreads(4,4,4)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    int3 ida = int3(id.x, id.y, id.z);
+    dimensions = int3(Dimensions.x, Dimensions.y, Dimensions.z);
+
+    if (ida.x >= dimensions.x || ida.y >= dimensions.y || ida.z >= dimensions.z)
+    {
+        return;
+    }
+    
+    int labels[NUM_ELEMENTS];
+    
+    int i = 0;
+    for (int z = -DILATION; z <= DILATION; z++)
+    {
+        for (int y = -DILATION; y <= DILATION; y++)
+        {
+            for (int x = -DILATION; x <= DILATION; x++)
+            {
+                labels[i++] = (int) LabelMap[ida + int3(x, y, z)];
+            }
+        }
+    }
+    
+    int result[4];
+    GetFourMostFrequent(labels, NUM_ELEMENTS, result);
+    
+    LabelMapDilated[ida] = float4(result[0], result[1], result[2], result[3]);
+}

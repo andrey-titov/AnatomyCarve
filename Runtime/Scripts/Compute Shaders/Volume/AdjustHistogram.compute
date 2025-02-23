@@ -1,0 +1,30 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+float4 Dimensions;
+RWTexture2D<int> RawHistogram;
+RWTexture2D<float> SegmentHistogram;
+
+static int2 dimensions;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    int2 ida = int2(id.x, id.y);
+    dimensions = int2(Dimensions.x, Dimensions.y);
+
+    if (ida.x >= dimensions.x || ida.y >= dimensions.y)
+    {
+        return;
+    }
+
+    float value = (float) RawHistogram[ida];
+    float max = (float) RawHistogram[int2(ida.x, dimensions.y)];
+    
+    SegmentHistogram[ida] = value / max;
+    
+    //if (ida.y == 0)
+    //{
+    //    SegmentHistogram[ida] = 0.5;
+    //}
+}

@@ -1,0 +1,43 @@
+{
+  "name": "ca.andreytitov.anatomycarve",
+  "version": "0.1.12",
+  "displayName": "AnatomyCarve",
+  "description": "This package contains a volume renderer that allows performing segment-based carving on medical images.",
+  "unity": "2022.3",
+  "documentationUrl": "https://example.com/",
+  "changelogUrl": "https://example.com/changelog.html",
+  "licensesUrl": "https://example.com/licensing.html",
+  "dependencies": {
+	"com.unity.xr.interaction.toolkit": "2.5.2"
+  },
+  "keywords": [
+	"Volume Rendering",
+	"Segmentation",
+	"Clipping",
+	"Carving",
+ 	"Virtual Reality",
+ 	"VR"
+  ],
+  "author": {
+    "name": "Andrey Titov",
+    "email": "titov.andrey.cem@gmail.com",
+    "url": "https://www.linkedin.com/in/andrey-a-titov/"
+  },
+  "samples": [
+        {
+            "displayName": "Full Setup",
+            "description": "Contains prefabs necessary for segment-based volume carving.",
+            "path": "Samples~/Full Setup"
+        },
+		{
+            "displayName": "Demo Data",
+            "description": "Contains data necessary for all demo scenes. After importing, copy the StreamingAssets folder from the \"Assets/Samples/AnatomyCarve/*.*.*/Demo Data/\" subdirectory directly to \"Assets/\"",
+            "path": "Samples~/Demo Data"
+        },
+		{
+            "displayName": "Demo Segment Carving VR",
+            "description": "Contains a sample VR scene which demonstrates interactive clipping of segments. Requires the XR Interaction Toolkit package.",
+            "path": "Samples~/Demo Segment Carving VR"
+        }
+    ]
+}

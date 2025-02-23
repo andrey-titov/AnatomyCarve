@@ -1,0 +1,212 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#define SAMPLES_COUNT 64
+
+Texture2D<float> DepthMap;
+SamplerState sampler_DepthMap;
+
+//float4 Samples[SAMPLES_COUNT];
+int KernelWidth;
+
+float DilationZ;
+int DilationXY;
+
+static uint textureWidth;
+static uint textureHeight;
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float> Result;
+
+static const float2 Samples[SAMPLES_COUNT] =
+{
+    float2(-0.2513314, -0.389256),
+    float2(-0.03298932, 0.2716041),
+    float2(0.1575189, -0.06721741),
+    float2(-0.1459162, 0.4438623),
+    float2(-0.3987336, 0.1424556),
+    float2(-0.4713632, -0.2519709),
+    float2(-0.1798899, 0.4897671),
+    float2(0.1821231, 0.1548879),
+    float2(-0.2172708, 0.1153464),
+    float2(0.2042515, 0.2017967),
+    float2(0.4497784, -0.4066115),
+    float2(-0.3390928, -0.1180289),
+    float2(0.2979477, -0.3305328),
+    float2(0.2937836, -0.1927718),
+    float2(0.3230284, 0.3864695),
+    float2(0.05630231, 0.216734),
+    float2(0.1992958, -0.4863856),
+    float2(0.4918761, 0.3063016),
+    float2(0.3587436, -0.4374967),
+    float2(0.01439375, 0.02525824),
+    float2(-0.2271748, 0.4937963),
+    float2(0.1911044, -0.1133845),
+    float2(-0.06566608, 0.1754055),
+    float2(0.1773817, -0.02712533),
+    float2(-0.2554812, -0.1465159),
+    float2(0.02625263, -0.3305727),
+    float2(-0.1534122, 0.191695),
+    float2(-0.1048569, -0.3447199),
+    float2(0.4498368, -0.4149604),
+    float2(0.4736564, -0.01194826),
+    float2(0.138999, -0.4531445),
+    float2(-0.3791662, -0.2852031),
+    float2(-0.4138468, -0.1880972),
+    float2(0.04873329, -0.1935043),
+    float2(0.4978911, 0.3758215),
+    float2(0.2961443, -0.2797741),
+    float2(-0.3990473, -0.3210067),
+    float2(-0.07102847, 0.4559821),
+    float2(-0.09771594, 0.2742917),
+    float2(0.4476371, -0.3774578),
+    float2(-0.007914513, -0.1790911),
+    float2(-0.4372905, -0.03045568),
+    float2(-0.1397831, -0.113125),
+    float2(-0.1298538, -0.4923991),
+    float2(0.1184713, 0.336596),
+    float2(0.3564648, 0.273704),
+    float2(-0.4111531, -0.473658),
+    float2(0.3862593, -0.2740304),
+    float2(0.3729625, -0.02369249),
+    float2(-0.1995378, -0.3775689),
+    float2(-0.3733278, -0.1291141),
+    float2(-0.02501637, -0.1313028),
+    float2(0.05733985, -0.1939732),
+    float2(-0.4315253, -0.3324055),
+    float2(-0.2372766, -0.060839),
+    float2(0.252996, -0.3244549),
+    float2(-0.3625976, 0.3511143),
+    float2(0.4959663, -0.1819099),
+    float2(0.484146, 0.1512895),
+    float2(0.35458, 0.1992782),
+    float2(0.4417566, 0.04113245),
+    float2(0.1880244, -0.3387049),
+    float2(-0.4806433, -0.4775597),
+    float2(-0.368621, -0.4253893),
+    //float2(-0.207266, -0.2969981),
+    //float2(-0.4169804, 0.4259765),
+    //float2(-0.02617055, 0.325206),
+    //float2(0.4958699, -0.3788005),
+    //float2(0.3459253, 0.1940123),
+    //float2(0.4122045, -0.4458098),
+    //float2(-0.1815996, -0.2974483),
+    //float2(0.2448774, -0.3206897),
+    //float2(-0.4164001, 0.1809197),
+    //float2(0.1363015, -0.2622674),
+    //float2(-0.4696243, 0.06816924),
+    //float2(-0.2581764, -0.278327),
+    //float2(0.1217275, 0.101184),
+    //float2(-0.3193255, 0.08553976),
+    //float2(0.1828615, -0.1863114),
+    //float2(-0.1506595, 0.03489953),
+    //float2(-0.3253523, 0.493864),
+    //float2(0.3748605, -0.4402784),
+    //float2(-0.1438586, 0.3270195),
+    //float2(0.2017156, -0.1878036),
+    //float2(0.3552443, 0.3747667),
+    //float2(-0.02783528, -0.2098662),
+    //float2(0.239085, 0.3003899),
+    //float2(-0.1191222, 0.2392049),
+    //float2(0.2962551, 0.008714139),
+    //float2(-0.4223049, -0.161563),
+    //float2(-0.1138613, 0.3936464),
+    //float2(-0.4557651, 0.2245648),
+    //float2(0.4611782, 0.3613466),
+    //float2(-0.195751, 0.3726454),
+    //float2(0.1445315, -0.08966982),
+    //float2(-0.06166199, 0.03223675),
+    //float2(-0.1553283, -0.122695),
+    //float2(0.3795424, -0.1754636),
+    //float2(-0.1723088, 0.1851559),
+    //float2(0.3231689, -0.2434196),
+    //float2(0.4792041, -0.1758949),
+    //float2(-0.1175117, -0.344391),
+    //float2(-0.4039955, 0.4516898),
+    //float2(-0.01741204, 0.3213376),
+    //float2(-0.2796938, -0.05853042),
+    //float2(0.2892848, -0.3258526),
+    //float2(-0.2640066, -0.4890964),
+    //float2(-0.3512392, -0.2189986),
+    //float2(0.4496291, -0.3497043),
+    //float2(-0.4014567, -0.005205214),
+    //float2(0.02277046, 0.3290702),
+    //float2(0.1676649, -0.05508587),
+    //float2(-0.0635713, 0.439928),
+    //float2(0.445462, -0.1382199),
+    //float2(0.4208475, -0.4436586),
+    //float2(-0.08848625, -0.3889008),
+    //float2(0.1855453, 0.3211147),
+    //float2(-0.1407671, -0.4379664),
+    //float2(0.01115805, 0.3886259),
+    //float2(0.1285603, -0.4905116),
+    //float2(-0.1212413, -0.01708859),
+    //float2(0.1523392, -0.2969381),
+    //float2(0.1210454, -0.2358094),
+    //float2(-0.2037567, -0.1662318),
+    //float2(-0.2714558, 0.09854102),
+    //float2(-0.1250927, -0.3226045),
+    //float2(0.08661258, -0.1716259),
+    //float2(0.2338099, -0.3498661),
+};
+
+float GetDepth(float2 position)
+{
+    float2 posNormalized = float2(position.x / float(textureWidth - 1), position.y / float(textureHeight));
+    float depth = DepthMap.SampleLevel(sampler_DepthMap, posNormalized, 0.0);
+    
+    if (depth <= 0.0)
+    {
+        depth = 1.0;
+    }
+    
+    return depth;
+}
+
+float2 Rotate(float2 pos, float degrees)
+{
+    // Convert degrees to radians
+    float radians = degrees * (3.14159265359 / 180.0);
+
+    // Rotation matrix
+    float2x2 rotationMatrix = float2x2(cos(radians), -sin(radians),
+                                       sin(radians), cos(radians));
+
+    // Apply rotation
+    return mul(rotationMatrix, pos);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    uint2 ida = id.xy;
+    
+    DepthMap.GetDimensions(textureWidth, textureHeight);
+
+    if (ida.x >= textureWidth || ida.y >= textureHeight)
+    {
+        return;
+    }
+    
+    uint2 kernelIndex = int2(ida.x % (uint) KernelWidth, ida.y % (uint) KernelWidth);
+    float kernelValue = kernelIndex.x + kernelIndex.y;
+    
+    float ssao = 0;
+    
+    float centralDepth = GetDepth(ida);
+    
+    for (uint i = 0; i < SAMPLES_COUNT; i++)
+    {
+        float2 sample = Samples[i] * float(KernelWidth);
+        float2 sampleRotated = Rotate(sample, kernelValue * 360.0);
+        float depth = GetDepth(float2(ida) + sampleRotated);
+        
+        if (depth >= centralDepth)
+        {
+            ssao += 1.0;
+        }            
+    }
+
+    Result[ida] = ssao / (float)SAMPLES_COUNT;
+}

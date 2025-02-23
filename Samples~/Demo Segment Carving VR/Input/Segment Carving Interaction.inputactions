@@ -1,0 +1,332 @@
+{
+    "name": "Segment Carving Interaction",
+    "maps": [
+        {
+            "name": "Point Left Hand",
+            "id": "7b590b5c-3c92-4508-b38a-636ec8a2b5c3",
+            "actions": [
+                {
+                    "name": "Toggle Carving",
+                    "type": "Button",
+                    "id": "50e63cd6-fb72-4f83-9518-67a239773380",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Resize Clipping Mesh",
+                    "type": "Value",
+                    "id": "ee9c1070-ceb6-4218-b0ad-33b673c7a477",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Place Clipping Mesh",
+                    "type": "Button",
+                    "id": "7239680f-15f1-491d-8ca4-7846a8be2098",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Remove Clipping Mesh",
+                    "type": "Button",
+                    "id": "6dc36cb9-9e26-4dee-a7a3-cb56c58f1beb",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Reset Clip Mask",
+                    "type": "Button",
+                    "id": "6381e5b3-dac1-4112-a097-a82ec256db8d",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Unhide Segment",
+                    "type": "Button",
+                    "id": "85536849-ab31-44bd-914c-824bf3a186c8",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "f411fc1e-852e-454c-83ff-1bf2d8c45700",
+                    "path": "<XRController>{LeftHand}/triggerButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Toggle Carving",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f81b65fe-9287-4271-b1cd-92f0f63408e0",
+                    "path": "<XRController>{RightHand}/primary2DAxis",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Resize Clipping Mesh",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "35040ef6-0eed-4c7f-974b-1c03d2420a1a",
+                    "path": "<XRController>{RightHand}/secondaryButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Place Clipping Mesh",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2a9c8907-9ea6-4a78-96b7-8479da7527eb",
+                    "path": "<XRController>{LeftHand}/menuButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Reset Clip Mask",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "49d1a872-d505-4b88-a0f8-a23960161655",
+                    "path": "<XRSimulatedController>{LeftHand}/menuButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Reset Clip Mask",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "54917ff2-35ca-4766-a6a4-07876fce99c1",
+                    "path": "<XRController>{RightHand}/primaryButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Remove Clipping Mesh",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "4e7f299b-7719-461a-8f46-0b08620c1488",
+                    "path": "<XRController>{RightHand}/triggerButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Unhide Segment",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "Point Right Hand",
+            "id": "6c6b4e6d-7b3c-4806-9998-503ab60f155e",
+            "actions": [
+                {
+                    "name": "Toggle Carving",
+                    "type": "Button",
+                    "id": "ee1ad53b-6d59-440c-bd61-fe2135d5db55",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Resize Clipping Mesh",
+                    "type": "Value",
+                    "id": "d5dd60ce-ffb8-40bf-b3f6-7cf382db6187",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Place Clipping Mesh",
+                    "type": "Button",
+                    "id": "5b360a22-6a17-41a4-9ed9-47e2497f21d2",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Remove Clipping Mesh",
+                    "type": "Button",
+                    "id": "146ccfe9-f96f-4100-8bad-d481d3814d20",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Reset Clip Mask",
+                    "type": "Button",
+                    "id": "2c32f563-7567-4b7a-b393-9a9fc0f9b326",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Unhide Segment",
+                    "type": "Button",
+                    "id": "ba56ee82-5463-4d38-9dd2-4e669f1f1dd3",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "4ec15a49-5f3d-46bb-be87-0c91e42f8147",
+                    "path": "<XRController>{RightHand}/triggerButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Toggle Carving",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c1c40964-aabd-40b8-a0ec-1701ee3f7466",
+                    "path": "<XRController>{LeftHand}/primary2DAxis",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Resize Clipping Mesh",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "feb8db53-5d52-472d-a3ad-ca17a33836c6",
+                    "path": "<XRController>{LeftHand}/secondaryButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Place Clipping Mesh",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "1163fbcf-4c99-434c-9842-e4ad9d0b06a2",
+                    "path": "<XRController>{LeftHand}/menuButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Reset Clip Mask",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "34a8bab3-085e-4f97-a6e9-1cde0cb42d6f",
+                    "path": "<XRSimulatedController>{LeftHand}/menuButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Reset Clip Mask",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0c1cdf59-836b-494e-8d7c-f8807ac68971",
+                    "path": "<XRController>{LeftHand}/primaryButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Remove Clipping Mesh",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "1706c9b1-847b-43ba-8bfd-db36f740c001",
+                    "path": "<XRController>{LeftHand}/triggerButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Unhide Segment",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "Ambidexter",
+            "id": "8545f7a3-6ff7-4762-bf37-6dab4ec8eb6c",
+            "actions": [
+                {
+                    "name": "Grip Volume Left",
+                    "type": "Button",
+                    "id": "70cdb4e0-2028-4249-a6c5-2dfad44ecc0d",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Grip Volume Right",
+                    "type": "Button",
+                    "id": "451a9b99-f7bc-4d85-831d-7d0cf53621b1",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "10051d08-42f4-413c-98cc-bddd39fa080a",
+                    "path": "<XRController>{LeftHand}/gripButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Grip Volume Left",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "92164945-3b9b-4d9e-b084-c220223ff6a1",
+                    "path": "<XRController>{RightHand}/gripButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Grip Volume Right",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

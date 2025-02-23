@@ -1,0 +1,281 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#pragma multi_compile __ FULL_RECALCULATION
+#pragma multi_compile NEIGHBORS_6 NEIGHBORS_14 NEIGHBORS_26 RUBIKS_54
+
+#define NORM_COMPONENT 0.57735026919
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+Texture3D<float> Opacities;
+
+#if !FULL_RECALCULATION 
+Texture3D<float> LaoPrecalculated;
+Texture3D<float> Mask;
+#endif
+
+SamplerState samplerOpacities;
+RWTexture3D<float> Result;
+float4 Dimensions;
+float4 PhysicalSize;
+float4 StepForMm;
+int RayStepCount;
+float DistanceToVoxel;
+
+#if NEIGHBORS_6
+#define LAO_RAYS_COUNT 6
+static const float3 SphereVectors[6] = {
+	float3(-0.01254252, -0.01942556, -0.9997327),
+	float3(0.01368665, -0.9999006, -0.003387214),
+	float3(-0.9995617, 0.02202271, -0.0197836),
+	float3(0.9996481, -0.02339324, -0.01250504),
+	float3(-0.008778812, 0.9999219, 0.008887799),
+	float3(0.00769931, -0.01080029, 0.9999121),
+};
+#elif NEIGHBORS_14
+#define LAO_RAYS_COUNT 14
+static const float3 SphereVectors[14] = {
+	float3(-0.579713, -0.5797849, -0.5725228),
+	float3(0.5650677, -0.5865736, -0.5801982),
+	float3(0.01511563, -0.01676875, -0.9997451),
+	float3(-0.5815925, 0.5853441, -0.5649092),
+	float3(0.5782437, 0.5828691, -0.5708746),
+	float3(-0.02492165, -0.9995662, 0.01569442),
+	float3(-0.9997517, -0.02226884, 0.0007326504),
+	float3(0.9996319, -0.01134024, 0.0246496),
+	float3(0.009609205, 0.9999484, -0.003301854),
+	float3(-0.5759299, -0.5758724, 0.5802376),
+	float3(0.5707417, -0.5823619, 0.5788856),
+	float3(-0.01636905, -0.00759655, 0.9998372),
+	float3(-0.5782773, 0.5653461, 0.5882),
+	float3(0.5648382, 0.5904661, 0.5764612),
+};
+#elif NEIGHBORS_26
+#define LAO_RAYS_COUNT 26
+static const float3 SphereVectors[26] = {
+	float3(-0.5667403, -0.5836374, -0.5815263),
+	float3(-0.009933316, -0.7109922, -0.7031296),
+	float3(0.5811687, -0.5853653, -0.5653232),
+	float3(-0.6953574, 0.01049349, -0.7185876),
+	float3(-0.01987529, -0.01598833, -0.9996746),
+	float3(0.7198348, -0.003438571, -0.6941369),
+	float3(-0.5721921, 0.5742458, -0.5855237),
+	float3(-0.00639631, 0.6986901, -0.7153959),
+	float3(0.5744827, 0.5752538, -0.5822823),
+	float3(-0.7176735, -0.6962799, 0.01178808),
+	float3(0.01806367, -0.9996197, -0.02083497),
+	float3(0.7054915, -0.7086492, -0.009900784),
+	float3(-0.9999476, -0.001207072, -0.01016594),
+	float3(0.9997975, -0.01902171, -0.006578589),
+	float3(-0.7098706, 0.7043292, 0.002032651),
+	float3(-0.009910622, 0.9998067, -0.0169835),
+	float3(0.7039288, 0.7102134, 0.009011471),
+	float3(-0.5767372, -0.5778195, 0.5774937),
+	float3(0.01724481, -0.7017277, 0.7122365),
+	float3(0.5817109, -0.5671079, 0.5830962),
+	float3(-0.6958146, 0.00146335, 0.71822),
+	float3(-0.01734166, -0.02460888, 0.9995468),
+	float3(0.7041248, -0.01525757, 0.7099122),
+	float3(-0.5828518, 0.562349, 0.5865555),
+	float3(-0.0009066496, 0.7041441, 0.7100565),
+	float3(0.5648298, 0.5856922, 0.5813192),
+};
+#elif RUBIKS_54
+#define LAO_RAYS_COUNT 54
+static const float3 SphereVectors[54] = {
+	float3(-0.4763575, -0.4972236, 0.7251566),
+	float3(-0.4891881, -0.4761175, -0.7307579),
+	float3(-0.4919567, 0.727244, -0.4786386),
+	float3(-0.486277, -0.7312449, -0.4783468),
+	float3(0.7232767, -0.4931386, -0.4834099),
+	float3(-0.7244288, -0.492324, -0.4825144),
+	float3(-0.5530991, -0.005199978, 0.8330992),
+	float3(-0.5603836, -0.009132039, -0.8281829),
+	float3(-0.5531075, 0.8331, -0.004054456),
+	float3(-0.5509538, -0.8345191, -0.005259553),
+	float3(0.8397767, -0.5429314, -0.000770062),
+	float3(-0.8368352, -0.5473917, 0.008321018),
+	float3(-0.4833943, 0.4862795, 0.7279164),
+	float3(-0.4859104, 0.4758576, -0.7331102),
+	float3(-0.486359, 0.7349272, 0.4725853),
+	float3(-0.4827307, -0.7210611, 0.4970332),
+	float3(0.7272946, -0.4789542, 0.4915745),
+	float3(-0.7278258, -0.4852628, 0.484551),
+	float3(-0.004262592, -0.5522165, 0.8336899),
+	float3(-0.004874218, -0.5603684, -0.8282291),
+	float3(0.00908043, 0.8361031, -0.5484971),
+	float3(-0.004839533, -0.8286467, -0.5597511),
+	float3(0.8282616, 0.01264081, -0.560199),
+	float3(-0.8284941, -0.007807786, -0.5599434),
+	float3(0.009727393, -0.01095701, 0.9998927),
+	float3(-0.01618185, -0.01162082, -0.9998015),
+	float3(0.01516127, 0.9997934, -0.01353692),
+	float3(-0.0001736285, -0.9999397, 0.01097668),
+	float3(0.9999961, -0.001825983, -0.002107258),
+	float3(-0.9998755, 0.01506785, -0.004675318),
+	float3(0.01177535, 0.5471882, 0.8369268),
+	float3(-0.01083443, 0.5623513, -0.8268274),
+	float3(-0.003943227, 0.8281039, 0.5605608),
+	float3(0.01089193, -0.8372002, 0.5467881),
+	float3(0.8290521, -0.0004741607, 0.5591711),
+	float3(-0.8375387, 0.00334622, 0.5463679),
+	float3(0.4826408, -0.4916613, 0.7247944),
+	float3(0.4834355, -0.4840741, -0.7293575),
+	float3(0.4894944, 0.7268932, -0.481686),
+	float3(0.4823729, -0.7326018, -0.4802198),
+	float3(0.7287435, 0.4740115, -0.4942127),
+	float3(-0.7256566, 0.487299, -0.4857594),
+	float3(0.5457153, 0.004978947, 0.8379558),
+	float3(0.5478086, 0.004172083, -0.8365933),
+	float3(0.5655177, 0.8247359, 0.0006064051),
+	float3(0.5418192, -0.8403987, -0.01272717),
+	float3(0.8296847, 0.5581588, 0.009054532),
+	float3(-0.8329937, 0.553274, 0.003067825),
+	float3(0.4776806, 0.4822807, 0.7343204),
+	float3(0.4787627, 0.4858072, -0.7312849),
+	float3(0.4803861, 0.728627, 0.4881923),
+	float3(0.4837652, -0.7309541, 0.4813288),
+	float3(0.7232316, 0.4843388, 0.4922927),
+	float3(-0.7266845, 0.4763535, 0.4949919),
+};
+#endif
+
+
+
+//sampler2D OpacityTF;
+
+//static const float START_RADIUS = 2; // mm
+//static const int RAY_STEP_COUNT = 20;
+static const float RADIUS_STEP_SIZE = 1; // mm per step
+
+static int3 dimensions;
+static int3 ida;
+int startZ;
+RWStructuredBuffer<int> timeoutBuffer;
+
+float getOpacity(float3 positionNc)
+{
+    return Opacities.SampleLevel(samplerOpacities, positionNc, 0).r;
+}
+
+float ambientFactorOfRay(float3 rayStart, float3 rayDirection, int samplesCount)
+{
+    float accumulatedAmbient = 0;
+    float currentTransparency = 1;
+
+    for (int i = 0; i < samplesCount; i++)
+    {
+        float3 currentPosition = rayStart + rayDirection * float(i * RADIUS_STEP_SIZE);
+        float opacity = getOpacity(currentPosition);
+        //float opacity = getOpacityTF(intensity);
+        float transparency = 1. - opacity;
+        currentTransparency *= transparency; //transparencies[i];
+        accumulatedAmbient += currentTransparency;
+    }
+    
+    // Adding one to accumulated opacity because it is indicated so in the formula
+    return (accumulatedAmbient + 1.0) / float(samplesCount + 1.0); 
+
+    /////////////////
+    //float3 currentPosition = rayStart + rayDirection * float(samplesCount);
+    //float intensity = getIntensity(currentPosition);
+    //float opacity = getOpacityTF(intensity);
+    //float transparency = 1. - opacity;
+    //return transparency;
+
+    //float currentTransparency = 1;
+    //for (int i = 0; i < samplesCount; i++)
+    //{
+    //    float3 currentPosition = rayStart + rayDirection * float(i);
+    //    float intensity = getIntensity(currentPosition);
+    //    float opacity = getOpacityTF(intensity);
+    //    float transparency = 1. - opacity;
+    //    currentTransparency *= transparency; //transparencies[i];
+    //}    
+    //return currentTransparency;
+}
+
+void setResult(float result)
+{
+    Result[ida] = result;
+}
+
+[numthreads(4, 4, 4)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    ida = int3(id.x, id.y, id.z + startZ);
+    dimensions = int3(Dimensions.x, Dimensions.y, Dimensions.z);
+
+    if (ida.x >= dimensions.x || ida.y >= dimensions.y || ida.z >= dimensions.z)
+    {
+        return;
+    }
+    
+#if !FULL_RECALCULATION
+    // Mask calculations
+    float maskValue = Mask[ida];
+    
+    if (maskValue == 0.0)
+    {
+        setResult(1); // Voxel is fully clipped
+        return;
+    }
+    else if (maskValue == 1.0)
+    {
+        setResult(LaoPrecalculated[ida]); // Voxel value can be taken from precalculated LAO volume
+        return;
+    }
+ #endif
+
+    //// Optimization consisting of not calculating LAO for transparent voxels
+    //if (Opacities[ida + int3(1, 1, 1)] == 0
+    //    && Opacities[ida] == 0
+    //    && Opacities[ida + int3(2, 2, 2)] == 0
+    //    && Opacities[ida + int3(0, 2, 2)] == 0
+    //    && Opacities[ida + int3(2, 0, 2)] == 0
+    //    && Opacities[ida + int3(0, 0, 2)] == 0
+    //    && Opacities[ida + int3(2, 2, 0)] == 0
+    //    && Opacities[ida + int3(0, 2, 0)] == 0
+    //    && Opacities[ida + int3(2, 0, 0)] == 0)
+    //{
+    //    setResult(1);
+    //    return;
+    //}
+    
+    //boundaryMin = float3(0.5, 0.5, 0.5) / float3(dimensions);
+    //boundaryMax = float3(1, 1, 1) - boundaryMin;
+    float3 voxelPositionNc = float3(ida + float3(1.5, 1.5, 1.5)) / float3(dimensions + int3(2, 2, 2)); 
+
+    /*float intensity = getIntensity(voxelPositionNc);
+    
+    float opacity = getOpacityTF(intensity);
+    
+    float ambientFactor = ambientFactorOfRay(voxelPositionNc, StepForMm.xyz, 10);*/
+    
+    float totalAmbient = 0;
+    
+    for (int i = 0; i < LAO_RAYS_COUNT; i++)
+    {
+        /*float z = SphereZ[i];
+        float longitude = SphereLongitude[i];
+        
+        float2 rotation2d = float2(cos(longitude), sin(longitude));
+        float norm2d = sqrt(1. - z * z);
+        
+        float2 rotation = rotation2d * norm2d;*/
+        
+        float3 spherePoint = SphereVectors[i]; //float3(rotation.x, rotation.y, z);
+        
+        float3 rayDirection = spherePoint * StepForMm.xyz;
+        float3 rayStart = voxelPositionNc + spherePoint * DistanceToVoxel;
+        
+        totalAmbient += ambientFactorOfRay(rayStart, rayDirection, RayStepCount);
+    }
+    
+    setResult(totalAmbient / float(LAO_RAYS_COUNT));
+	
+    timeoutBuffer[0] = 12;
+
+    //setResult(Opacities[ida]); // TODO replace
+}

@@ -1,0 +1,55 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#pragma multi_compile _ SEGMENT_CARVING
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+sampler3D LabelMap;
+Texture2D<float> SegmentOpacities;
+
+RWStructuredBuffer<float> RaycastHit;
+
+#if SEGMENT_CARVING
+sampler3D CarvingMap;
+#endif
+
+int StepsCount;
+float4 StartPosition;
+float4 DirectionStep;
+
+[numthreads(1,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float epsilon = length(DirectionStep.xyz) / 2.0;
+    
+    for (int i = 0; i < StepsCount; i++)
+    {
+        float4 position = StartPosition + DirectionStep * (float)i;
+
+        if (position.x < -epsilon || position.y < -epsilon || position.z < -epsilon
+                || position.x > 1 + epsilon || position.y > 1 + epsilon || position.z > 1 + epsilon)
+        {
+            break;
+        }
+        
+        int label = (int)tex3Dlod(LabelMap, position);
+        int carvingValue = 1;
+        float segmentOpacity = SegmentOpacities[int2(label, 0)].r;
+        
+#if SEGMENT_CARVING
+        carvingValue = (int)tex3Dlod(CarvingMap, position);
+#endif        
+
+        if (label != 0 && carvingValue > 0.5 && segmentOpacity > 0.001)
+        {
+            RaycastHit[0] = position.x - 0.5;
+            RaycastHit[1] = position.y - 0.5;
+            RaycastHit[2] = position.z - 0.5;
+            RaycastHit[3] = label;
+            return;
+        }
+    }
+    
+    RaycastHit[3] = 0;
+}
