@@ -1,0 +1,4 @@
+{
+    "user": "demo",
+    "laserPointerRightHand": true
+}
