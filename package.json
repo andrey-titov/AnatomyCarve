@@ -8,7 +8,8 @@
   "changelogUrl": "https://example.com/changelog.html",
   "licensesUrl": "https://example.com/licensing.html",
   "dependencies": {
-	"com.unity.xr.interaction.toolkit": "2.6.4"
+	"com.unity.xr.interaction.toolkit": "2.6.4",
+	"com.unity.inputsystem": "1.11.2"
   },
   "keywords": [
 	"Volume Rendering",
