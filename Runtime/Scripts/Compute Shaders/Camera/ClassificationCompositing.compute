@@ -5,7 +5,7 @@
 
 #pragma multi_compile SOLID_COLOR PHONG PHONG_SSAO LAO PHONG_LAO
 
-#pragma multi_compile _ COLOR_LABEL COLOR_HISTOGRAM COLOR_UNIQUE_LABEL
+#pragma multi_compile _ COLOR_LABEL COLOR_HISTOGRAM COLOR_UNIQUE_LABEL COLOR_SLICER
 #pragma multi_compile _ SEGMENT_CARVING
 //#pragma multi_compile _ COLOR_LABEL SEGMENT_COLOR DILATED_LABELS SMOOTH COLOR_HISTOGRAM
 
@@ -30,7 +30,7 @@ Texture2D<float4> DirectionSteps;
 #if COLOR_LABEL
 sampler3D LabelMap;
 Texture2D<half4> SegmentColors;
-#elif COLOR_HISTOGRAM
+#elif COLOR_HISTOGRAM || COLOR_SLICER
 sampler3D ColorMap;
 #elif COLOR_UNIQUE_LABEL
 sampler3D LabelMap;
@@ -282,7 +282,7 @@ float3 getSegmentColor(float4 currentPosition)
     return colorOfLabel;
 
 }
-#elif COLOR_HISTOGRAM
+#elif COLOR_HISTOGRAM || COLOR_SLICER
 float3 getSegmentColor(float4 currentPosition)
 {
     float4 colorOfLabel = tex3Dlod(ColorMap, float4(currentPosition.xyz, 0));
@@ -398,7 +398,7 @@ float3 addSSAO(float3 color)
 
 float3 calculateShading(float4 currentPosition, float4 colorOpacity)
 {
-#if COLOR_LABEL || COLOR_HISTOGRAM || COLOR_UNIQUE_LABEL // || SEGMENT_COLOR || DILATED_LABELS 
+#if COLOR_LABEL || COLOR_HISTOGRAM || COLOR_UNIQUE_LABEL || COLOR_SLICER // || SEGMENT_COLOR || DILATED_LABELS 
     colorOpacity.rgb = getSegmentColor(currentPosition);
 #endif 
     

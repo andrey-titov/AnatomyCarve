@@ -1,16 +1,19 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
+#pragma multi_compile _ HISTOGRAM // Slicer-like or Histogram
+
 float4 Dimensions;
 Texture3D<float> LabelMap;
 Texture3D<float> Intensities;
 Texture3D<float4> LabelMapDilated;
+Texture2D<float4> SegmentColors;
+
+#if HISTOGRAM
 sampler2D SegmentHistogram;
 float4 SegmentHistogramDimensions;
-//sampler2D ColorOpacityTF;
 Texture2D<float> SegmentOpacities;
-Texture2D<float4> SegmentColors;
-//int SegmentOpacity;
+#endif
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
@@ -73,6 +76,7 @@ float3 HSVToRGB(float3 hsv)
     return rgb;
 }
 
+#if HISTOGRAM
 float colorSingleLabel(int3 ida)
 {
     float intensity = Intensities[ida];
@@ -173,6 +177,13 @@ float4 colorMultiLabelHSV(int3 ida)
     
     return float4(totalColor, 1);
 }
+#endif
+
+float4 colorOfTopSegment(int3 ida)
+{
+    int label = (int) LabelMapDilated[ida].x;
+    return SegmentColors[int2(label, 0)];
+}
 
 [numthreads(4, 4, 4)]
 void CSMain(uint3 id : SV_DispatchThreadID)
@@ -185,7 +196,11 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         return;
     }
     
+#if HISTOGRAM
     float4 color = colorMultiLabel(ida);
+#else
+    float4 color = colorOfTopSegment(ida);
+#endif
     //float maskValue = SegmentOpacities[int2(LabelMap[ida], 0)];
     //color *= maskValue;
     

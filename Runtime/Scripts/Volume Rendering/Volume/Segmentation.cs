@@ -87,6 +87,7 @@ namespace AnatomyCarve.Runtime
             Label,
             Histogram,
             UniqueLabel,
+            Slicer,
         }
 
         public enum NewCarvingMaskConfig
@@ -565,14 +566,21 @@ namespace AnatomyCarve.Runtime
             shader[4].SetTexture(kernel[4], "LabelMap", labelMap);
             shader[4].SetTexture(kernel[4], "Intensities", intensities);
             shader[4].SetTexture(kernel[4], "LabelMapDilated", labelMapDilated);
-            shader[4].SetTexture(kernel[4], "SegmentHistogram", segmentHistogram);
-            shader[4].SetVector("SegmentHistogramDimensions", new Vector4(segmentHistogram.width, segmentHistogram.height));
 
-            shader[4].SetTexture(kernel[4], "SegmentOpacities", segmentOpacities);
+            if (colorRendering == ColorRendering.Histogram)
+            {
+                shader[4].EnableKeyword("HISTOGRAM");
+                shader[4].SetTexture(kernel[4], "SegmentHistogram", segmentHistogram);
+                shader[4].SetVector("SegmentHistogramDimensions", new Vector4(segmentHistogram.width, segmentHistogram.height));
+                shader[4].SetTexture(kernel[4], "SegmentOpacities", segmentOpacities);
+            }
+            else 
+            {
+                shader[4].DisableKeyword("HISTOGRAM");
+            }
 
             segmentColors.Apply();
-            shader[4].SetTexture(kernel[4], "SegmentColors", segmentColors);            
-
+            shader[4].SetTexture(kernel[4], "SegmentColors", segmentColors);
             shader[4].SetTexture(kernel[4], "ColorMap", colorMap);
 
             ExecuteShader(4, dimensions);

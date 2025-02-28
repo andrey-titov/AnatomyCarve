@@ -40,6 +40,7 @@ namespace AnatomyCarve.Runtime
                 {Segmentation.ColorRendering.Label, "COLOR_LABEL" },
                 {Segmentation.ColorRendering.Histogram, "COLOR_HISTOGRAM" },
                 {Segmentation.ColorRendering.UniqueLabel, "COLOR_UNIQUE_LABEL" },
+                {Segmentation.ColorRendering.Slicer, "COLOR_SLICER" },
             };
 
             VolumeRendering.OnVolumeRenderingReady += OnVolumeRenderingReady;
