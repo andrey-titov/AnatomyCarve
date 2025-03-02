@@ -135,6 +135,9 @@ namespace AnatomyCarve.Runtime
                             //Debug.Log("2");
                         }
                         break;
+                    case Segmentation.ColorRendering.Slicer:
+                        shader.SetTexture(kernel, "ColorMap", volume.segmentation.colorMap);
+                        break;
                     default:
                         break;
                 }
