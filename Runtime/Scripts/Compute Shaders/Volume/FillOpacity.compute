@@ -3,12 +3,18 @@
 
 #pragma multi_compile _ SEGMENT_CARVING
 
+#pragma multi_compile _ HISTOGRAM // Slicer-like or Histogram
+
 float4 Dimensions;
 Texture3D<float> LabelMap;
 Texture3D<float> Intensities;
 Texture3D<float4> LabelMapDilated;
+
+#if HISTOGRAM
 sampler2D SegmentHistogram;
 float4 SegmentHistogramDimensions;
+#endif
+
 Texture2D<float> SegmentOpacities;
 
 #if SEGMENT_CARVING
@@ -20,6 +26,8 @@ Texture3D<half> CarvingMap;
 RWTexture3D<float> OpacityMap;
 
 static int3 dimensions;
+
+#if HISTOGRAM
 
 float opacitySingleLabel(int3 ida)
 {
@@ -77,415 +85,418 @@ float opacityMultiLabel(int3 ida)
     
     return opacity;
 }
+#endif
 
-float opacityIntensity(int3 ida)
-{
-    float intensity = Intensities[ida];
-    float opacity = intensity * SegmentOpacities[int2(LabelMap[ida], 0)];
-    return opacity;
-}
+//float opacityIntensity(int3 ida)
+//{
+//    float intensity = Intensities[ida];
+//    float opacity = intensity * SegmentOpacities[int2(LabelMap[ida], 0)];
+//    return opacity;
+//}
 
-float opacityIntensityBlur(int3 ida)
-{
-    float opacity = 0;
-    float total = 0;
-    {    
-        for (int i = -1; i <= 1; i++)
-        {
-            for (int j = -1; j <= 1; j++)
-            {
-                for (int k = -1; k <= 1; k++)
-                {
-                    float power = 3 - abs(i) - abs(j) - abs(k);
-                    float factor = pow(2.0, power);
-                    int3 idaBlur = ida + int3(i, j, k);
-                    opacity += Intensities[idaBlur] * SegmentOpacities[int2(LabelMap[idaBlur], 0)] * factor;
-                    total += factor;
+//float opacityIntensityBlur(int3 ida)
+//{
+//    float opacity = 0;
+//    float total = 0;
+//    {    
+//        for (int i = -1; i <= 1; i++)
+//        {
+//            for (int j = -1; j <= 1; j++)
+//            {
+//                for (int k = -1; k <= 1; k++)
+//                {
+//                    float power = 3 - abs(i) - abs(j) - abs(k);
+//                    float factor = pow(2.0, power);
+//                    int3 idaBlur = ida + int3(i, j, k);
+//                    opacity += Intensities[idaBlur] * SegmentOpacities[int2(LabelMap[idaBlur], 0)] * factor;
+//                    total += factor;
 
-                }
-            }
-        }
-    }
-    opacity /= total;
+//                }
+//            }
+//        }
+//    }
+//    opacity /= total;
     
-    return opacity;
-}
+//    return opacity;
+//}
 
-// Assumes voxelGrid is a 3x3x3 grid of luminance values.
-// fx, fy, fz are the coordinates of the focal voxel in the 3x3x3 grid, usually the center voxel (1, 1, 1).
-float ApplyFXAA4(float voxelGrid[3][3][3], int fx, int fy, int fz)
-{
-    float focalLuma = voxelGrid[fx][fy][fz];
+//// Assumes voxelGrid is a 3x3x3 grid of luminance values.
+//// fx, fy, fz are the coordinates of the focal voxel in the 3x3x3 grid, usually the center voxel (1, 1, 1).
+//float ApplyFXAA4(float voxelGrid[3][3][3], int fx, int fy, int fz)
+//{
+//    float focalLuma = voxelGrid[fx][fy][fz];
     
-    // Collect neighboring luma values
-    float lumaMip1 = voxelGrid[fx + 1][fy][fz];
-    float lumaMim1 = voxelGrid[fx - 1][fy][fz];
-    float lumaPim1 = voxelGrid[fx][fy + 1][fz];
-    float lumaPip1 = voxelGrid[fx][fy - 1][fz];
+//    // Collect neighboring luma values
+//    float lumaMip1 = voxelGrid[fx + 1][fy][fz];
+//    float lumaMim1 = voxelGrid[fx - 1][fy][fz];
+//    float lumaPim1 = voxelGrid[fx][fy + 1][fz];
+//    float lumaPip1 = voxelGrid[fx][fy - 1][fz];
 
-    // Compute luma derivatives
-    float lumaDX = lumaMip1 - lumaMim1;
-    float lumaDY = lumaPip1 - lumaPim1;
+//    // Compute luma derivatives
+//    float lumaDX = lumaMip1 - lumaMim1;
+//    float lumaDY = lumaPip1 - lumaPim1;
     
-    // FXAA edge threshold
-    float edgeThreshold = 0.2;
+//    // FXAA edge threshold
+//    float edgeThreshold = 0.2;
     
-    // Check for an edge
-    if (abs(lumaDX) + abs(lumaDY) > edgeThreshold)
-    {
-        // Calculate anti-aliased luma, for example, by averaging neighbors
-        float antiAliasedLuma = (lumaMip1 + lumaMim1 + lumaPim1 + lumaPip1) * 0.25;
+//    // Check for an edge
+//    if (abs(lumaDX) + abs(lumaDY) > edgeThreshold)
+//    {
+//        // Calculate anti-aliased luma, for example, by averaging neighbors
+//        float antiAliasedLuma = (lumaMip1 + lumaMim1 + lumaPim1 + lumaPip1) * 0.25;
         
-        return antiAliasedLuma;
-    }
-    else
-    {
-        // No anti-aliasing needed
-        return focalLuma;
-    }
-}
+//        return antiAliasedLuma;
+//    }
+//    else
+//    {
+//        // No anti-aliasing needed
+//        return focalLuma;
+//    }
+//}
 
-// Assumes voxelGrid is a 3x3x3 grid of luminance values.
-// fx, fy, fz are the coordinates of the focal voxel in the 3x3x3 grid, usually the center voxel (1, 1, 1).
-float ApplyFXAA8(float voxelGrid[3][3][3], int fx, int fy, int fz)
-{
-    float focalLuma = voxelGrid[fx][fy][fz];
+//// Assumes voxelGrid is a 3x3x3 grid of luminance values.
+//// fx, fy, fz are the coordinates of the focal voxel in the 3x3x3 grid, usually the center voxel (1, 1, 1).
+//float ApplyFXAA8(float voxelGrid[3][3][3], int fx, int fy, int fz)
+//{
+//    float focalLuma = voxelGrid[fx][fy][fz];
     
-    // Collect neighboring luma values
-    float luma000 = voxelGrid[fx - 1][fy - 1][fz];
-    float luma001 = voxelGrid[fx + 1][fy - 1][fz];
-    float luma010 = voxelGrid[fx - 1][fy + 1][fz];
-    float luma011 = voxelGrid[fx + 1][fy + 1][fz];
-    float luma100 = voxelGrid[fx][fy - 1][fz - 1];
-    float luma101 = voxelGrid[fx][fy - 1][fz + 1];
-    float luma110 = voxelGrid[fx][fy + 1][fz - 1];
-    float luma111 = voxelGrid[fx][fy + 1][fz + 1];
+//    // Collect neighboring luma values
+//    float luma000 = voxelGrid[fx - 1][fy - 1][fz];
+//    float luma001 = voxelGrid[fx + 1][fy - 1][fz];
+//    float luma010 = voxelGrid[fx - 1][fy + 1][fz];
+//    float luma011 = voxelGrid[fx + 1][fy + 1][fz];
+//    float luma100 = voxelGrid[fx][fy - 1][fz - 1];
+//    float luma101 = voxelGrid[fx][fy - 1][fz + 1];
+//    float luma110 = voxelGrid[fx][fy + 1][fz - 1];
+//    float luma111 = voxelGrid[fx][fy + 1][fz + 1];
     
-    //float luma000 = voxelGrid[fx - 1][fy - 1][fz - 1];
-    //float luma001 = voxelGrid[fx - 1][fy - 1][fz + 1];
-    //float luma010 = voxelGrid[fx - 1][fy + 1][fz - 1];
-    //float luma011 = voxelGrid[fx - 1][fy + 1][fz + 1];
-    //float luma100 = voxelGrid[fx + 1][fy - 1][fz - 1];
-    //float luma101 = voxelGrid[fx + 1][fy - 1][fz + 1];
-    //float luma110 = voxelGrid[fx + 1][fy + 1][fz - 1];
-    //float luma111 = voxelGrid[fx + 1][fy + 1][fz + 1];
+//    //float luma000 = voxelGrid[fx - 1][fy - 1][fz - 1];
+//    //float luma001 = voxelGrid[fx - 1][fy - 1][fz + 1];
+//    //float luma010 = voxelGrid[fx - 1][fy + 1][fz - 1];
+//    //float luma011 = voxelGrid[fx - 1][fy + 1][fz + 1];
+//    //float luma100 = voxelGrid[fx + 1][fy - 1][fz - 1];
+//    //float luma101 = voxelGrid[fx + 1][fy - 1][fz + 1];
+//    //float luma110 = voxelGrid[fx + 1][fy + 1][fz - 1];
+//    //float luma111 = voxelGrid[fx + 1][fy + 1][fz + 1];
 
-    // Compute luma derivatives (differences between diagonals)
-    float lumaDX1 = luma001 - luma000;
-    float lumaDX2 = luma011 - luma010;
-    float lumaDY1 = luma101 - luma100;
-    float lumaDY2 = luma111 - luma110;
+//    // Compute luma derivatives (differences between diagonals)
+//    float lumaDX1 = luma001 - luma000;
+//    float lumaDX2 = luma011 - luma010;
+//    float lumaDY1 = luma101 - luma100;
+//    float lumaDY2 = luma111 - luma110;
 
-    // Combine the derivatives to find edge intensity
-    float edgeIntensity = abs(lumaDX1) + abs(lumaDX2) + abs(lumaDY1) + abs(lumaDY2);
+//    // Combine the derivatives to find edge intensity
+//    float edgeIntensity = abs(lumaDX1) + abs(lumaDX2) + abs(lumaDY1) + abs(lumaDY2);
     
-    // FXAA edge threshold
-    float edgeThreshold = 0.3;
+//    // FXAA edge threshold
+//    float edgeThreshold = 0.3;
     
-    // Check for an edge
-    if (edgeIntensity > edgeThreshold)
-    {
-        // Calculate anti-aliased luma by averaging neighbors
-        float antiAliasedLuma = (luma000 + luma001 + luma010 + luma011 +
-                                 luma100 + luma101 + luma110 + luma111) * 0.125;
+//    // Check for an edge
+//    if (edgeIntensity > edgeThreshold)
+//    {
+//        // Calculate anti-aliased luma by averaging neighbors
+//        float antiAliasedLuma = (luma000 + luma001 + luma010 + luma011 +
+//                                 luma100 + luma101 + luma110 + luma111) * 0.125;
         
-        return antiAliasedLuma;
-    }
-    else
-    {
-        // No anti-aliasing needed
-        return focalLuma;
-    }
-}
+//        return antiAliasedLuma;
+//    }
+//    else
+//    {
+//        // No anti-aliasing needed
+//        return focalLuma;
+//    }
+//}
 
-// Assumes voxelGrid is a 3x3x3 grid of luminance values.
-// fx, fy, fz are the coordinates of the focal voxel in the 3x3x3 grid, usually the center voxel (1, 1, 1).
-float ApplyFXAAnew(float voxelGrid[3][3][3], int fx, int fy, int fz)
-{
-    float focalLuma = voxelGrid[fx][fy][fz];
+//// Assumes voxelGrid is a 3x3x3 grid of luminance values.
+//// fx, fy, fz are the coordinates of the focal voxel in the 3x3x3 grid, usually the center voxel (1, 1, 1).
+//float ApplyFXAAnew(float voxelGrid[3][3][3], int fx, int fy, int fz)
+//{
+//    float focalLuma = voxelGrid[fx][fy][fz];
     
-    // Collect neighboring luma values from all corners of the 3x3x3 cube
-    float luma000 = voxelGrid[0][0][0];
-    float luma001 = voxelGrid[0][0][2];
-    float luma010 = voxelGrid[0][2][0];
-    float luma011 = voxelGrid[0][2][2];
-    float luma100 = voxelGrid[2][0][0];
-    float luma101 = voxelGrid[2][0][2];
-    float luma110 = voxelGrid[2][2][0];
-    float luma111 = voxelGrid[2][2][2];
+//    // Collect neighboring luma values from all corners of the 3x3x3 cube
+//    float luma000 = voxelGrid[0][0][0];
+//    float luma001 = voxelGrid[0][0][2];
+//    float luma010 = voxelGrid[0][2][0];
+//    float luma011 = voxelGrid[0][2][2];
+//    float luma100 = voxelGrid[2][0][0];
+//    float luma101 = voxelGrid[2][0][2];
+//    float luma110 = voxelGrid[2][2][0];
+//    float luma111 = voxelGrid[2][2][2];
 
-    // Compute luma derivatives (differences between diagonals)
-    float lumaDX1 = luma001 - luma000;
-    float lumaDX2 = luma011 - luma010;
-    float lumaDY1 = luma101 - luma100;
-    float lumaDY2 = luma111 - luma110;
+//    // Compute luma derivatives (differences between diagonals)
+//    float lumaDX1 = luma001 - luma000;
+//    float lumaDX2 = luma011 - luma010;
+//    float lumaDY1 = luma101 - luma100;
+//    float lumaDY2 = luma111 - luma110;
 
-    // Combine the derivatives to find edge intensity
-    float edgeIntensity = abs(lumaDX1) + abs(lumaDX2) + abs(lumaDY1) + abs(lumaDY2);
+//    // Combine the derivatives to find edge intensity
+//    float edgeIntensity = abs(lumaDX1) + abs(lumaDX2) + abs(lumaDY1) + abs(lumaDY2);
     
-    // FXAA edge threshold
-    float edgeThreshold = 0.2;
+//    // FXAA edge threshold
+//    float edgeThreshold = 0.2;
     
-    // Check for an edge
-    if (edgeIntensity > edgeThreshold)
-    {
-        // Calculate anti-aliased luma by averaging the 8 corner neighbors
-        float antiAliasedLuma = (luma000 + luma001 + luma010 + luma011 +
-                                 luma100 + luma101 + luma110 + luma111) * 0.125;
+//    // Check for an edge
+//    if (edgeIntensity > edgeThreshold)
+//    {
+//        // Calculate anti-aliased luma by averaging the 8 corner neighbors
+//        float antiAliasedLuma = (luma000 + luma001 + luma010 + luma011 +
+//                                 luma100 + luma101 + luma110 + luma111) * 0.125;
         
-        return antiAliasedLuma;
-    }
-    else
-    {
-        // No anti-aliasing needed
-        return focalLuma;
-    }
-}
+//        return antiAliasedLuma;
+//    }
+//    else
+//    {
+//        // No anti-aliasing needed
+//        return focalLuma;
+//    }
+//}
 
-// Assumes voxelGrid is a 3x3x3 grid of luminance values.
-// The function performs FXAA-like anti-aliasing and returns the anti-aliased value for the central voxel.
-float Apply3x3x3FXAA(float voxelGrid[3][3][3])
-{
-    // Luminance of the central voxel
-    float centralLuma = voxelGrid[1][1][1];
+//// Assumes voxelGrid is a 3x3x3 grid of luminance values.
+//// The function performs FXAA-like anti-aliasing and returns the anti-aliased value for the central voxel.
+//float Apply3x3x3FXAA(float voxelGrid[3][3][3])
+//{
+//    // Luminance of the central voxel
+//    float centralLuma = voxelGrid[1][1][1];
 
-    // Sum all the neighboring luminance values
-    float lumaSum = 0.0;
-    int neighborCount = 0;
-    for (int x = 0; x < 3; ++x)
-    {
-        for (int y = 0; y < 3; ++y)
-        {
-            for (int z = 0; z < 3; ++z)
-            {
-                if (x != 1 || y != 1 || z != 1)
-                { // Exclude the central voxel
-                    lumaSum += voxelGrid[x][y][z];
-                    neighborCount++;
-                }
-            }
-        }
-    }
+//    // Sum all the neighboring luminance values
+//    float lumaSum = 0.0;
+//    int neighborCount = 0;
+//    for (int x = 0; x < 3; ++x)
+//    {
+//        for (int y = 0; y < 3; ++y)
+//        {
+//            for (int z = 0; z < 3; ++z)
+//            {
+//                if (x != 1 || y != 1 || z != 1)
+//                { // Exclude the central voxel
+//                    lumaSum += voxelGrid[x][y][z];
+//                    neighborCount++;
+//                }
+//            }
+//        }
+//    }
 
-    // Compute average neighboring luminance
-    float lumaAvg = lumaSum / (float) neighborCount;
+//    // Compute average neighboring luminance
+//    float lumaAvg = lumaSum / (float) neighborCount;
 
-    // Compute edge intensity based on the difference between central voxel and average luminance
-    float edgeIntensity = abs(centralLuma - lumaAvg);
+//    // Compute edge intensity based on the difference between central voxel and average luminance
+//    float edgeIntensity = abs(centralLuma - lumaAvg);
 
-    // FXAA edge threshold
-    float edgeThreshold = 0.2;
+//    // FXAA edge threshold
+//    float edgeThreshold = 0.2;
 
-    // Check for an edge
-    if (edgeIntensity > edgeThreshold)
-    {
-        // Compute anti-aliased luminance as an average between the central luma and the neighboring average
-        float antiAliasedLuma = (centralLuma + lumaAvg) * 0.5;
-        return antiAliasedLuma;
-    }
-    else
-    {
-        // No anti-aliasing needed
-        return centralLuma;
-    }
-}
+//    // Check for an edge
+//    if (edgeIntensity > edgeThreshold)
+//    {
+//        // Compute anti-aliased luminance as an average between the central luma and the neighboring average
+//        float antiAliasedLuma = (centralLuma + lumaAvg) * 0.5;
+//        return antiAliasedLuma;
+//    }
+//    else
+//    {
+//        // No anti-aliasing needed
+//        return centralLuma;
+//    }
+//}
 
-float3 Apply3DFXAA(float lumenWindow[5][5][5])
-{
-    // Central value coordinates
-    int x = 2;
-    int y = 2;
-    int z = 2;
+//float3 Apply3DFXAA(float lumenWindow[5][5][5])
+//{
+//    // Central value coordinates
+//    int x = 2;
+//    int y = 2;
+//    int z = 2;
 
-    // Initialize variables for edge detection
-    float edgeThreshold = 0.1; // Threshold for edge detection (adjust as needed)
-    float finalColor = lumenWindow[x][y][z];
-    float blendWeight = 0.0;
-    int count = 0;
+//    // Initialize variables for edge detection
+//    float edgeThreshold = 0.1; // Threshold for edge detection (adjust as needed)
+//    float finalColor = lumenWindow[x][y][z];
+//    float blendWeight = 0.0;
+//    int count = 0;
     
-    int i;
+//    int i;
 
-    // Perform edge detection and calculate blend weight
-    for (i = -1; i <= 1; ++i)
-    {
-        for (int j = -1; j <= 1; ++j)
-        {
-            for (int k = -1; k <= 1; ++k)
-            {
-                if (i == 0 && j == 0 && k == 0)
-                    continue;
+//    // Perform edge detection and calculate blend weight
+//    for (i = -1; i <= 1; ++i)
+//    {
+//        for (int j = -1; j <= 1; ++j)
+//        {
+//            for (int k = -1; k <= 1; ++k)
+//            {
+//                if (i == 0 && j == 0 && k == 0)
+//                    continue;
 
-                float neighborLumen = lumenWindow[x + i][y + j][z + k];
-                float difference = abs(neighborLumen - finalColor);
+//                float neighborLumen = lumenWindow[x + i][y + j][z + k];
+//                float difference = abs(neighborLumen - finalColor);
 
-                // Check if the difference between the central pixel and its neighbor is above the threshold
-                if (difference > edgeThreshold)
-                {
-                    blendWeight += difference;
-                    count++;
-                }
-            }
-        }
-    }
+//                // Check if the difference between the central pixel and its neighbor is above the threshold
+//                if (difference > edgeThreshold)
+//                {
+//                    blendWeight += difference;
+//                    count++;
+//                }
+//            }
+//        }
+//    }
 
-    // Calculate average blend weight
-    if (count > 0)
-    {
-        blendWeight /= count;
-    }
+//    // Calculate average blend weight
+//    if (count > 0)
+//    {
+//        blendWeight /= count;
+//    }
 
-    // Blend central color with neighboring pixels
-    finalColor *= (1.0 - blendWeight);
-    for (i = -1; i <= 1; ++i)
-    {
-        for (int j = -1; j <= 1; ++j)
-        {
-            for (int k = -1; k <= 1; ++k)
-            {
-                if (i == 0 && j == 0 && k == 0)
-                    continue;
+//    // Blend central color with neighboring pixels
+//    finalColor *= (1.0 - blendWeight);
+//    for (i = -1; i <= 1; ++i)
+//    {
+//        for (int j = -1; j <= 1; ++j)
+//        {
+//            for (int k = -1; k <= 1; ++k)
+//            {
+//                if (i == 0 && j == 0 && k == 0)
+//                    continue;
 
-                float neighborLumen = lumenWindow[x + i][y + j][z + k];
-                finalColor += neighborLumen * blendWeight / count;
-            }
-        }
-    }
+//                float neighborLumen = lumenWindow[x + i][y + j][z + k];
+//                finalColor += neighborLumen * blendWeight / count;
+//            }
+//        }
+//    }
 
-    return finalColor;
-}
+//    return finalColor;
+//}
 
-float Apply3DFXAA_3x3x3(float lumenWindow[3][3][3])
-{
-    // Central value coordinates
-    int x = 1;
-    int y = 1;
-    int z = 1;
+//float Apply3DFXAA_3x3x3(float lumenWindow[3][3][3])
+//{
+//    // Central value coordinates
+//    int x = 1;
+//    int y = 1;
+//    int z = 1;
 
-    // Initialize variables for edge detection
-    float edgeThreshold = 0.1; // Threshold for edge detection (adjust as needed)
-    float finalColor = lumenWindow[x][y][z];
-    float blendWeight = 0.0;
-    int count = 0;
+//    // Initialize variables for edge detection
+//    float edgeThreshold = 0.1; // Threshold for edge detection (adjust as needed)
+//    float finalColor = lumenWindow[x][y][z];
+//    float blendWeight = 0.0;
+//    int count = 0;
 
-    // Perform edge detection and calculate blend weight
-    {
-        for (int i = -1; i <= 1; ++i)
-        {
-            for (int j = -1; j <= 1; ++j)
-            {
-                for (int k = -1; k <= 1; ++k)
-                {
-                    if (i == 0 && j == 0 && k == 0)
-                        continue;
+//    // Perform edge detection and calculate blend weight
+//    {
+//        for (int i = -1; i <= 1; ++i)
+//        {
+//            for (int j = -1; j <= 1; ++j)
+//            {
+//                for (int k = -1; k <= 1; ++k)
+//                {
+//                    if (i == 0 && j == 0 && k == 0)
+//                        continue;
 
-                    float neighborLumen = lumenWindow[x + i][y + j][z + k];
-                    float difference = abs(neighborLumen - finalColor);
+//                    float neighborLumen = lumenWindow[x + i][y + j][z + k];
+//                    float difference = abs(neighborLumen - finalColor);
 
-                    // Check if the difference between the central pixel and its neighbor is above the threshold
-                    if (difference > edgeThreshold)
-                    {
-                        blendWeight += difference;
-                        count++;
-                    }
-                }
-            }
-        }
-    }
+//                    // Check if the difference between the central pixel and its neighbor is above the threshold
+//                    if (difference > edgeThreshold)
+//                    {
+//                        blendWeight += difference;
+//                        count++;
+//                    }
+//                }
+//            }
+//        }
+//    }
 
-    // Calculate average blend weight
-    if (count > 0)
-    {
-        blendWeight /= count;
+//    // Calculate average blend weight
+//    if (count > 0)
+//    {
+//        blendWeight /= count;
         
-        // Blend central color with neighboring pixels
-        //finalColor *= (1.0 - blendWeight);
-        float blendColor = 0;
-        for (int i = -1; i <= 1; ++i)
-        {
-            for (int j = -1; j <= 1; ++j)
-            {
-                for (int k = -1; k <= 1; ++k)
-                {
-                    if (i == 0 && j == 0 && k == 0)
-                        continue;
+//        // Blend central color with neighboring pixels
+//        //finalColor *= (1.0 - blendWeight);
+//        float blendColor = 0;
+//        for (int i = -1; i <= 1; ++i)
+//        {
+//            for (int j = -1; j <= 1; ++j)
+//            {
+//                for (int k = -1; k <= 1; ++k)
+//                {
+//                    if (i == 0 && j == 0 && k == 0)
+//                        continue;
 
-                    float neighborLumen = lumenWindow[x + i][y + j][z + k];
-                    blendColor += neighborLumen / 26;
-                }
-            }
-        }
+//                    float neighborLumen = lumenWindow[x + i][y + j][z + k];
+//                    blendColor += neighborLumen / 26;
+//                }
+//            }
+//        }
         
-        finalColor = lerp(finalColor, blendColor, blendWeight);
+//        finalColor = lerp(finalColor, blendColor, blendWeight);
 
-    }
+//    }
 
     
 
-    return finalColor;
-}
+//    return finalColor;
+//}
 
-float Apply3DFXAA_3x3x3v2(float lumenWindow[3][3][3])
-{
-    // Central value coordinates
-    int x = 1;
-    int y = 1;
-    int z = 1;
+//float Apply3DFXAA_3x3x3v2(float lumenWindow[3][3][3])
+//{
+//    // Central value coordinates
+//    int x = 1;
+//    int y = 1;
+//    int z = 1;
 
-    // Initialize variables for edge detection
-    float edgeThreshold = 0.1; // Threshold for edge detection (adjust as needed)
-    float finalColor = lumenWindow[x][y][z];
-    float blendWeight = 0.0;
-    int count = 0;
+//    // Initialize variables for edge detection
+//    float edgeThreshold = 0.1; // Threshold for edge detection (adjust as needed)
+//    float finalColor = lumenWindow[x][y][z];
+//    float blendWeight = 0.0;
+//    int count = 0;
 
-    // Perform edge detection and calculate blend weight
-    for (int i = -1; i <= 1; ++i)
-    {
-        for (int j = -1; j <= 1; ++j)
-        {
-            for (int k = -1; k <= 1; ++k)
-            {
-                if (i == 0 && j == 0 && k == 0)
-                    continue;
+//    // Perform edge detection and calculate blend weight
+//    for (int i = -1; i <= 1; ++i)
+//    {
+//        for (int j = -1; j <= 1; ++j)
+//        {
+//            for (int k = -1; k <= 1; ++k)
+//            {
+//                if (i == 0 && j == 0 && k == 0)
+//                    continue;
 
-                float neighborLumen = lumenWindow[x + i][y + j][z + k];
-                float difference = abs(neighborLumen - finalColor);
+//                float neighborLumen = lumenWindow[x + i][y + j][z + k];
+//                float difference = abs(neighborLumen - finalColor);
 
-                // Check if the difference between the central pixel and its neighbor is above the threshold
-                if (difference > edgeThreshold)
-                {
-                    blendWeight += difference;
-                    count++;
-                }
-            }
-        }
-    }
+//                // Check if the difference between the central pixel and its neighbor is above the threshold
+//                if (difference > edgeThreshold)
+//                {
+//                    blendWeight += difference;
+//                    count++;
+//                }
+//            }
+//        }
+//    }
 
-    // Adjust final color based on detected edges
-    if (count > 0)
-    {
-        // Calculate average blend weight
-        blendWeight /= count;
+//    // Adjust final color based on detected edges
+//    if (count > 0)
+//    {
+//        // Calculate average blend weight
+//        blendWeight /= count;
 
-        // Blend central color with neighboring pixels
-        finalColor *= (1.0 - blendWeight);
-        for (int i = -1; i <= 1; ++i)
-        {
-            for (int j = -1; j <= 1; ++j)
-            {
-                for (int k = -1; k <= 1; ++k)
-                {
-                    if (i == 0 && j == 0 && k == 0)
-                        continue;
+//        // Blend central color with neighboring pixels
+//        finalColor *= (1.0 - blendWeight);
+//        for (int i = -1; i <= 1; ++i)
+//        {
+//            for (int j = -1; j <= 1; ++j)
+//            {
+//                for (int k = -1; k <= 1; ++k)
+//                {
+//                    if (i == 0 && j == 0 && k == 0)
+//                        continue;
 
-                    float neighborLumen = lumenWindow[x + i][y + j][z + k];
-                    finalColor += neighborLumen * blendWeight / count;
-                }
-            }
-        }
-    }
+//                    float neighborLumen = lumenWindow[x + i][y + j][z + k];
+//                    finalColor += neighborLumen * blendWeight / count;
+//                }
+//            }
+//        }
+//    }
 
-    return finalColor;
-}
+//    return finalColor;
+//}
+
+#if HISTOGRAM
 
 float Apply3DFXAA_3x3x3_Fast(float lumenWindow[3][3][3])
 {
@@ -573,6 +584,20 @@ float opacityIntensityFXAA(int3 ida)
     return Apply3DFXAA_3x3x3_Fast(voxelGrid);
 
 }
+#endif
+
+float opacitySlicer(int3 ida)
+{
+    float intensity = Intensities[ida];
+    float mask = SegmentOpacities[int2(LabelMap[ida], 0)];
+    float segmentCarvingValue = 1.0;
+                
+#if SEGMENT_CARVING
+                segmentCarvingValue = CarvingMap[ida];
+#endif
+
+    return intensity * mask * segmentCarvingValue;
+}
 
 [numthreads(4,4,4)]
 void CSMain (uint3 id : SV_DispatchThreadID)
@@ -585,5 +610,10 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         return;
     }
     
+#if HISTOGRAM
     OpacityMap[ida] = opacityIntensityFXAA(ida);
+#else
+    OpacityMap[ida] = opacitySlicer(ida);
+#endif
+    
 }
