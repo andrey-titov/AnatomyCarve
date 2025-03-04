@@ -3,19 +3,23 @@
 
 #pragma multi_compile _ SEGMENT_CARVING
 
-#pragma multi_compile _ HISTOGRAM // Slicer-like or Histogram
+#define FXAA_WINDOW_DIMENSION 3
+
+//#pragma multi_compile _ HISTOGRAM // Slicer-like or Histogram
 
 float4 Dimensions;
 Texture3D<float> LabelMap;
 Texture3D<float> Intensities;
 Texture3D<float4> LabelMapDilated;
 
-#if HISTOGRAM
-sampler2D SegmentHistogram;
-float4 SegmentHistogramDimensions;
-#endif
+//#if HISTOGRAM
+//sampler2D SegmentHistogram;
+//float4 SegmentHistogramDimensions;
+//#endif
 
 Texture2D<float> SegmentOpacities;
+
+sampler2D OpacityTF;
 
 #if SEGMENT_CARVING
 Texture3D<half> CarvingMap;
@@ -27,65 +31,65 @@ RWTexture3D<float> OpacityMap;
 
 static int3 dimensions;
 
-#if HISTOGRAM
 
-float opacitySingleLabel(int3 ida)
-{
-    float intensity = Intensities[ida];
-    float label = LabelMap[ida];
-    
-    float4 index = float4((float(label) + 0.5) / SegmentHistogramDimensions.x, intensity, 0, 0);
-    float factor = tex2Dlod(SegmentHistogram, index).r;
-    
-    if (label == 0)
-    {
-        factor = 0;
-    }
-    
-    return factor;
-}
 
-int readHistogram(int3 ida, out int4 labels, out float4 factors)
-{
-    labels = LabelMapDilated[ida];
-    factors = float4(0, 0, 0, 0);
-
-    int numLabels = labels[1] == -1 ? 1 : (labels[2] == -1 ? 2 : (labels[3] == -1 ? 3 : (4)));
+//float opacitySingleLabel(int3 ida)
+//{
+//    float intensity = Intensities[ida];
+//    float label = LabelMap[ida];
     
-    float intensity = Intensities[ida];
+//    float4 index = float4((float(label) + 0.5) / SegmentHistogramDimensions.x, intensity, 0, 0);
+//    float factor = tex2Dlod(SegmentHistogram, index).r;
     
-    [unroll]
-    for (int i = 0; i < numLabels; i++)
-    {
-        float4 index = float4((float(labels[i]) + 0.5) / SegmentHistogramDimensions.x, intensity, 0, 0);
-        factors[i] = tex2Dlod(SegmentHistogram, index).r;
-    }
-
-    return numLabels;
-}
-
-float opacityMultiLabel(int3 ida)
-{
-    int4 labels;
-    float4 factors;
-    int numLabels = readHistogram(ida, labels, factors);
+//    if (label == 0)
+//    {
+//        factor = 0;
+//    }
     
-    [unroll]
-    for (int i = 0; i < 4; i++)
-    {
-        //if (labels[i] == 0)
-        //{
-        //    factors[i] = 0;
-        //}
+//    return factor;
+//}
+
+//int readHistogram(int3 ida, out int4 labels, out float4 factors)
+//{
+//    labels = LabelMapDilated[ida];
+//    factors = float4(0, 0, 0, 0);
+
+//    int numLabels = labels[1] == -1 ? 1 : (labels[2] == -1 ? 2 : (labels[3] == -1 ? 3 : (4)));
+    
+//    float intensity = Intensities[ida];
+    
+//    [unroll]
+//    for (int i = 0; i < numLabels; i++)
+//    {
+//        float4 index = float4((float(labels[i]) + 0.5) / SegmentHistogramDimensions.x, intensity, 0, 0);
+//        factors[i] = tex2Dlod(SegmentHistogram, index).r;
+//    }
+
+//    return numLabels;
+//}
+
+//float opacityMultiLabel(int3 ida)
+//{
+//    int4 labels;
+//    float4 factors;
+//    int numLabels = readHistogram(ida, labels, factors);
+    
+//    [unroll]
+//    for (int i = 0; i < 4; i++)
+//    {
+//        //if (labels[i] == 0)
+//        //{
+//        //    factors[i] = 0;
+//        //}
         
-        factors[i] *= SegmentOpacities[int2(labels[i], 0)];
-    }
+//        factors[i] *= SegmentOpacities[int2(labels[i], 0)];
+//    }
     
-    float opacity = (factors.r + factors.g + factors.b + factors.a) / (float) numLabels;
+//    float opacity = (factors.r + factors.g + factors.b + factors.a) / (float) numLabels;
     
-    return opacity;
-}
-#endif
+//    return opacity;
+//}
+
 
 //float opacityIntensity(int3 ida)
 //{
@@ -496,8 +500,6 @@ float opacityMultiLabel(int3 ida)
 //    return finalColor;
 //}
 
-#if HISTOGRAM
-
 float Apply3DFXAA_3x3x3_Fast(float lumenWindow[3][3][3])
 {
     // Central value coordinates
@@ -552,18 +554,18 @@ float Apply3DFXAA_3x3x3_Fast(float lumenWindow[3][3][3])
     return finalColor;
 }
 
-#define WINDOW_DIMENSION 3
+
 
 float opacityIntensityFXAA(int3 ida)
 {
-    float voxelGrid[WINDOW_DIMENSION][WINDOW_DIMENSION][WINDOW_DIMENSION];
-    int substractValue = WINDOW_DIMENSION / 2;
+    float voxelGrid[FXAA_WINDOW_DIMENSION][FXAA_WINDOW_DIMENSION][FXAA_WINDOW_DIMENSION];
+    int substractValue = FXAA_WINDOW_DIMENSION / 2;
     
-    for (int i = 0; i < WINDOW_DIMENSION; i++)
+    for (int i = 0; i < FXAA_WINDOW_DIMENSION; i++)
     {
-        for (int j = 0; j < WINDOW_DIMENSION; j++)
+        for (int j = 0; j < FXAA_WINDOW_DIMENSION; j++)
         {
-            for (int k = 0; k < WINDOW_DIMENSION; k++)
+            for (int k = 0; k < FXAA_WINDOW_DIMENSION; k++)
             {
                 int3 idaBlur = ida + int3(i, j, k) - int3(substractValue, substractValue, substractValue);
                 int3 idaGrid = int3(i, j, k);
@@ -576,7 +578,7 @@ float opacityIntensityFXAA(int3 ida)
                 segmentCarvingValue = CarvingMap[idaBlur];
 #endif
 
-                voxelGrid[idaGrid.x][idaGrid.y][idaGrid.z] = intensity * mask * segmentCarvingValue;
+                voxelGrid[idaGrid.x][idaGrid.y][idaGrid.z] = intensity * mask * segmentCarvingValue; // tex2Dlod(OpacityTF, float4(intensity, 0, 0, 0)).r
             }
         }
     }
@@ -584,7 +586,6 @@ float opacityIntensityFXAA(int3 ida)
     return Apply3DFXAA_3x3x3_Fast(voxelGrid);
 
 }
-#endif
 
 float opacitySlicer(int3 ida)
 {
@@ -593,7 +594,7 @@ float opacitySlicer(int3 ida)
     float segmentCarvingValue = 1.0;
                 
 #if SEGMENT_CARVING
-                segmentCarvingValue = CarvingMap[ida];
+    segmentCarvingValue = CarvingMap[ida];
 #endif
 
     return intensity * mask * segmentCarvingValue;
@@ -610,10 +611,5 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         return;
     }
     
-#if HISTOGRAM
-    OpacityMap[ida] = opacityIntensityFXAA(ida);
-#else
-    OpacityMap[ida] = opacitySlicer(ida);
-#endif
-    
+    OpacityMap[ida] = opacityIntensityFXAA(ida);    
 }

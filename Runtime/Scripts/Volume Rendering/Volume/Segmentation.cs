@@ -534,16 +534,18 @@ namespace AnatomyCarve.Runtime
                 shader[3].DisableKeyword("SEGMENT_CARVING");
             }
 
-            if (colorRendering == ColorRendering.Histogram)
-            {
-                shader[3].EnableKeyword("HISTOGRAM");
-                shader[3].SetTexture(kernel[3], "SegmentHistogram", segmentHistogram);
-                shader[3].SetVector("SegmentHistogramDimensions", new Vector4(segmentHistogram.width, segmentHistogram.height));
-            }
-            else
-            {
-                shader[3].DisableKeyword("HISTOGRAM");
-            }
+            //shader[3].SetTexture(kernel[3], "OpacityTF", volume.opacityTexture);
+
+            //if (colorRendering == ColorRendering.Histogram)
+            //{
+            //    shader[3].EnableKeyword("HISTOGRAM");
+            //    shader[3].SetTexture(kernel[3], "SegmentHistogram", segmentHistogram);
+            //    shader[3].SetVector("SegmentHistogramDimensions", new Vector4(segmentHistogram.width, segmentHistogram.height));
+            //}
+            //else
+            //{
+            //    shader[3].DisableKeyword("HISTOGRAM");
+            //}
 
             segmentOpacities.Apply();
             shader[3].SetTexture(kernel[3], "SegmentOpacities", segmentOpacities);
