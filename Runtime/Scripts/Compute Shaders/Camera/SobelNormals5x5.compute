@@ -1,0 +1,106 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#pragma multi_compile __ PRECALCULATION_PASS
+
+Texture3D<float> Opacities;
+float4 Dimensions;
+
+RWTexture3D<float4> Result;
+
+static int3 dimensions;
+
+//cbuffer VolumeParams : register(b0)
+//{
+//    int3 volumeDim; // Dimensions of the volume (width, height, depth)
+//    float voxelSize; // Voxel size if needed (for scaling the gradient)
+//};
+
+//Texture3D<float> Volume : register(t0);
+//RWTexture3D<float3> Normals : register(u0);
+//SamplerState VolumeSampler : register(s0);
+
+[numthreads(8, 8, 8)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    dimensions = int3(Dimensions.x, Dimensions.y, Dimensions.z);
+    
+    // Ensure we have a full 5x5x5 neighborhood.
+    if (id.x < 2 || id.x >= dimensions.x - 2 ||
+        id.y < 2 || id.y >= dimensions.y - 2 ||
+        id.z < 2 || id.z >= dimensions.z - 2)
+    {
+        return;
+    }
+
+    // Define derivative and smoothing kernels for a 5-tap Sobel operator.
+    int derivative[5] = { -2, -1, 0, 1, 2 };
+    int smoothing[5] = { 1, 4, 6, 4, 1 };
+
+    float gradX = 0.0f;
+    float gradY = 0.0f;
+    float gradZ = 0.0f;
+
+    // Compute gradient in X direction:
+    // For each offset in x, smooth over y and z.
+    for (int dx = -2; dx <= 2; dx++)
+    {
+        float sumYZ = 0.0f;
+        for (int dy = -2; dy <= 2; dy++)
+        {
+            float sumZ = 0.0f;
+            for (int dz = -2; dz <= 2; dz++)
+            {
+                int3 samplePos = int3(id + int3(dx, dy, dz));
+                float sampleVal = Opacities.Load(int4(samplePos, 0));
+                sumZ += smoothing[dz + 2] * sampleVal;
+            }
+            sumYZ += smoothing[dy + 2] * sumZ;
+        }
+        gradX += derivative[dx + 2] * sumYZ;
+    }
+
+    // Compute gradient in Y direction:
+    for (int dy = -2; dy <= 2; dy++)
+    {
+        float sumXZ = 0.0f;
+        for (int dx = -2; dx <= 2; dx++)
+        {
+            float sumZ = 0.0f;
+            for (int dz = -2; dz <= 2; dz++)
+            {
+                int3 samplePos = int3(id + int3(dx, dy, dz));
+                float sampleVal = Opacities.Load(int4(samplePos, 0));
+                sumZ += smoothing[dz + 2] * sampleVal;
+            }
+            sumXZ += smoothing[dx + 2] * sumZ;
+        }
+        gradY += derivative[dy + 2] * sumXZ;
+    }
+
+    // Compute gradient in Z direction:
+    for (int dz = -2; dz <= 2; dz++)
+    {
+        float sumXY = 0.0f;
+        for (int dx = -2; dx <= 2; dx++)
+        {
+            float sumY = 0.0f;
+            for (int dy = -2; dy <= 2; dy++)
+            {
+                int3 samplePos = int3(id + int3(dx, dy, dz));
+                float sampleVal = Opacities.Load(int4(samplePos, 0));
+                sumY += smoothing[dy + 2] * sampleVal;
+            }
+            sumXY += smoothing[dx + 2] * sumY;
+        }
+        gradZ += derivative[dz + 2] * sumXY;
+    }
+
+    // Combine the gradients into a vector and normalize it to obtain the normal.
+    float3 gradient = float3(gradX, gradY, gradZ);
+    float len = length(gradient);
+    float3 normal = (len > 0.0f) ? gradient / len : float3(0.0f, 0.0f, 0.0f);
+
+    float3 packedNormal = (-normal + float3(1., 1., 1.)) / 2.;
+    Result[id] = float4(packedNormal, 1.0);
+}
