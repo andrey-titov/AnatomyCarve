@@ -106,7 +106,7 @@ namespace AnatomyCarve.Runtime
 
             this.info = info;
             this.intensities = intensities;            
-            LoadTransferFunction(transferFunction);        
+            //LoadTransferFunction(transferFunction);        
 
             UpdateScale();
             UpdateStepInfo();
@@ -136,7 +136,7 @@ namespace AnatomyCarve.Runtime
             }
         }
 
-        public void LoadTransferFunction(TransferFunction transferFunction)
+        public void LoadTransferFunction(TransferFunction transferFunction, VolumeInfo info)
         {
             this.transferFunction = transferFunction;
 

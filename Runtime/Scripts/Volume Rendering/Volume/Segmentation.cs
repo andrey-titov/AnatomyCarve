@@ -31,7 +31,13 @@ namespace AnatomyCarve.Runtime
         public RenderTexture colorMap;
         public RenderTexture carvingMap;
 
-        
+        [Range(0f, 1f)]
+        public float opacityPoint1;
+        [Range(0f, 1f)]
+        public float opacityPoint2;
+        [Range(0f, 1f)]
+        public float opacityMax;
+
 #else
         public Texture3D labelMap { get; set; }
 
@@ -534,7 +540,10 @@ namespace AnatomyCarve.Runtime
                 shader[3].DisableKeyword("SEGMENT_CARVING");
             }
 
-            //shader[3].SetTexture(kernel[3], "OpacityTF", volume.opacityTexture);
+            shader[3].SetTexture(kernel[3], "OpacityTF", volume.opacityTexture);
+            shader[3].SetFloat("OpacityPoint1", opacityPoint1);
+            shader[3].SetFloat("OpacityPoint2", opacityPoint2);
+            shader[3].SetFloat("OpacityMax", opacityMax);
 
             //if (colorRendering == ColorRendering.Histogram)
             //{

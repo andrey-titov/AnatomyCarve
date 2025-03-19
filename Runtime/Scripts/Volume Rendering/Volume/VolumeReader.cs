@@ -70,14 +70,15 @@ namespace AnatomyCarve.Runtime
             readerVolume.SetFileName(volumeFilePath);
             Image fileVolume = readerVolume.Execute();
 
-            // Read property file
-            string propertyFilePath = GetFileFolder(TF_FOLDER) + transferFunctionFile;
-            TransferFunction transferFunction = new TransferFunction(propertyFilePath, transferFunction1DLength);        
-
             // Read data file
             VolumeInfo info = ReadVolumeInfo(fileVolume);
             Array voxels = ReadVoxelData(fileVolume, info);      
             Texture3D intensities = CreateDataTexture(voxels, info);
+
+            // Read property file
+            string propertyFilePath = GetFileFolder(TF_FOLDER) + transferFunctionFile;
+            TransferFunction transferFunction = new TransferFunction(propertyFilePath, transferFunction1DLength);
+            volume.LoadTransferFunction(transferFunction, info);
 
             // Read segmentation
             if (!string.IsNullOrWhiteSpace(segmentationFile))

@@ -11,6 +11,9 @@ float4 Dimensions;
 Texture3D<float> LabelMap;
 Texture3D<float> Intensities;
 Texture3D<float4> LabelMapDilated;
+float OpacityPoint1;
+float OpacityPoint2;
+float OpacityMax;
 
 //#if HISTOGRAM
 //sampler2D SegmentHistogram;
@@ -31,7 +34,27 @@ RWTexture3D<float> OpacityMap;
 
 static int3 dimensions;
 
+float opacityTF(float intensity)
+{
+    return tex2Dlod(OpacityTF, float4(intensity, 0, 0, 0)).r;
+}
 
+float opacityPoints(float intensity)
+{
+    if (intensity < OpacityPoint1)
+    {
+        return 0;
+    }
+    else if (intensity > OpacityPoint2)
+    {
+        return OpacityMax;
+    }
+    else
+    {
+        return lerp(0, OpacityMax, (intensity - OpacityPoint1) / (OpacityPoint2 - OpacityPoint1));
+
+    }
+}
 
 //float opacitySingleLabel(int3 ida)
 //{
@@ -578,7 +601,7 @@ float opacityIntensityFXAA(int3 ida)
                 segmentCarvingValue = CarvingMap[idaBlur];
 #endif
 
-                voxelGrid[idaGrid.x][idaGrid.y][idaGrid.z] = intensity * mask * segmentCarvingValue; // tex2Dlod(OpacityTF, float4(intensity, 0, 0, 0)).r
+                voxelGrid[idaGrid.x][idaGrid.y][idaGrid.z] = opacityPoints(intensity) * mask * segmentCarvingValue; // tex2Dlod(OpacityTF, float4(intensity, 0, 0, 0)).r
             }
         }
     }
@@ -610,13 +633,14 @@ float opacitySingleCarved(int3 ida)
     segmentCarvingValue = CarvingMap[ida];
 #endif
 
-    return intensity * mask * segmentCarvingValue;
+    return opacityPoints(intensity) * mask * segmentCarvingValue;
 }
 
 //float blur3x3(int3 ida)
 //{
     
 //}
+
 
 [numthreads(4,4,4)]
 void CSMain (uint3 id : SV_DispatchThreadID)
