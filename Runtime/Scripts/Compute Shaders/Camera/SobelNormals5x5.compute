@@ -10,6 +10,8 @@ RWTexture3D<float4> Result;
 
 static int3 dimensions;
 
+static const int3 OFFSET = int3(1, 1, 1);
+
 //cbuffer VolumeParams : register(b0)
 //{
 //    int3 volumeDim; // Dimensions of the volume (width, height, depth)
@@ -20,7 +22,7 @@ static int3 dimensions;
 //RWTexture3D<float3> Normals : register(u0);
 //SamplerState VolumeSampler : register(s0);
 
-[numthreads(8, 8, 8)]
+[numthreads(4, 4, 4)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
     int3 ida = int3(id.x, id.y, id.z);
@@ -52,7 +54,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
             float sumZ = 0.0f;
             for (int dz = -2; dz <= 2; dz++)
             {
-                int3 samplePos = int3(id + int3(dx, dy, dz));
+                int3 samplePos = int3(id + int3(dx, dy, dz) + OFFSET);
                 float sampleVal = Opacities.Load(int4(samplePos, 0));
                 sumZ += smoothing[dz + 2] * sampleVal;
             }
@@ -70,7 +72,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
             float sumZ = 0.0f;
             for (int dz = -2; dz <= 2; dz++)
             {
-                int3 samplePos = int3(id + int3(dx, dy, dz));
+                int3 samplePos = int3(id + int3(dx, dy, dz) + OFFSET);
                 float sampleVal = Opacities.Load(int4(samplePos, 0));
                 sumZ += smoothing[dz + 2] * sampleVal;
             }
@@ -88,7 +90,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
             float sumY = 0.0f;
             for (int dy = -2; dy <= 2; dy++)
             {
-                int3 samplePos = int3(id + int3(dx, dy, dz));
+                int3 samplePos = int3(id + int3(dx, dy, dz) + OFFSET);
                 float sampleVal = Opacities.Load(int4(samplePos, 0));
                 sumY += smoothing[dy + 2] * sampleVal;
             }

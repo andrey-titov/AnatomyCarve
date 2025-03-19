@@ -587,7 +587,20 @@ float opacityIntensityFXAA(int3 ida)
 
 }
 
-float opacitySlicer(int3 ida)
+float intensitySingle(int3 ida)
+{
+    float intensity = Intensities[ida];
+    
+//    float segmentCarvingValue = 1.0;
+                
+//#if SEGMENT_CARVING
+//    segmentCarvingValue = CarvingMap[ida];
+//#endif
+
+    return intensity;
+}
+
+float opacitySingleCarved(int3 ida)
 {
     float intensity = Intensities[ida];
     float mask = SegmentOpacities[int2(LabelMap[ida], 0)];
@@ -600,6 +613,11 @@ float opacitySlicer(int3 ida)
     return intensity * mask * segmentCarvingValue;
 }
 
+//float blur3x3(int3 ida)
+//{
+    
+//}
+
 [numthreads(4,4,4)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
@@ -611,5 +629,5 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         return;
     }
     
-    OpacityMap[ida] = opacityIntensityFXAA(ida);    
+    OpacityMap[ida] = opacityIntensityFXAA(ida);
 }
