@@ -41,19 +41,8 @@ float opacityTF(float intensity)
 
 float opacityPoints(float intensity)
 {
-    if (intensity < OpacityPoint1)
-    {
-        return 0;
-    }
-    else if (intensity > OpacityPoint2)
-    {
-        return OpacityMax;
-    }
-    else
-    {
-        return lerp(0, OpacityMax, (intensity - OpacityPoint1) / (OpacityPoint2 - OpacityPoint1));
-
-    }
+    float parameter = (intensity - OpacityPoint1) / (OpacityPoint2 - OpacityPoint1);
+    return lerp(0, OpacityMax, saturate(parameter));
 }
 
 //float opacitySingleLabel(int3 ida)
