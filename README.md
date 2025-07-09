@@ -30,3 +30,7 @@ Users can conveniently toggle segment clipping status by pressing triggers on th
 11) In the *Project* window, navigate to *Assets => Samples => AnatomyCarve \*.\*.\* => Demo Data*.
 12) Copy or move the the *StreamingAssets* folder inside *Demo Data* to the root *Assets* folder of the unity project, so that it is located in **Assets/StreamingAssets**
 13) Open the *Segmented Rendering* scene in *Assets => Samples => AnatomyCarve \*.\*.\* => Demo Segment Carving VR* to open a sample scene that can be run with a VR headset.
+
+# References
+[AnatomyCarve: A VR occlusion management technique for medical images based on segment-aware clipping](https://arxiv.org/abs/2507.05572)
+
